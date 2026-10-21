@@ -2,7 +2,7 @@
 
 Two tools in one repo:
 
-1. **`whisper-transcribe`** — Batch-transcribe and diarize MP4 files via [WhisperX](https://github.com/m-bain/whisperX). Drop `.mp4` files into `input/`, run, get a timestamped speaker-labeled transcript.
+1. **`whisper-transcribe`** — Batch-transcribe and diarize MP4 or WAV files via [WhisperX](https://github.com/m-bain/whisperX). Drop `.mp4` or `.wav` files into `input/`, run, get a timestamped speaker-labeled transcript.
 2. **`whisper-recorder`** — GUI app for live recording (microphone + system audio) then transcribing. Global hotkey toggles a recording modal; results land in `~/WhisperRecordings/`.
 
 ## Requirements
@@ -55,15 +55,15 @@ Get your token at https://hf.co/settings/tokens. Also accepted via `--hf-token` 
 
 ---
 
-## 1. CLI: `whisper-transcribe` — Batch MP4 Processing
+## 1. CLI: `whisper-transcribe` — Batch MP4/WAV Processing
 
-Transcribes + diarizes all `.mp4` files in `input/`, ordered by creation time.
+Transcribes + diarizes all `.mp4` and `.wav` files in `input/`, ordered by creation time.
 
 ### Usage
 
 ```bash
-# Place MP4 files in input/
-cp /path/to/videos/*.mp4 input/
+# Place MP4 or WAV files in input/
+cp /path/to/media/*.{mp4,wav} input/
 
 # Run
 uv run whisper-transcribe
@@ -78,7 +78,7 @@ After running, input files are **moved** to `input_processed/`. Output lands in 
 
 | Flag             | Default    | Description                                      |
 | ---------------- | ---------- | ------------------------------------------------ |
-| `--input-dir`    | `./input`  | Folder with `.mp4` files                         |
+| `--input-dir`    | `./input`  | Folder with `.mp4` or `.wav` files              |
 | `--work-dir`     | `./work`   | Intermediate files (merged video, WAV)           |
 | `--output-dir`   | `./output` | Final transcript files                           |
 | `--language`     | `de`       | Language code                                    |

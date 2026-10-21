@@ -2,6 +2,8 @@
 __pycache__/
 .venv/
 work/
+input/
+input_processed/
 output/
 *.mp4
 **.avi

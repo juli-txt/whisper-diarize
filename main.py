@@ -21,6 +21,7 @@ INPUT_DIR = SCRIPT_DIR / "input"
 INPUT_PROCESSED_DIR = SCRIPT_DIR / "input_processed"
 WORK_DIR = SCRIPT_DIR / "work"
 OUTPUT_DIR = SCRIPT_DIR / "output"
+SUPPORTED_INPUT_EXTENSIONS = {".mp4", ".wav"}
 
 
 @dataclass(frozen=True)
@@ -49,7 +50,7 @@ class TranscriptionConfig:
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description=(
-            "Concatenate MP4 files from input/, ordered by creation date, then "
+            "Concatenate MP4/WAV files from input/, ordered by creation date, then "
             "transcribe and diarize the result with WhisperX."
         )
     )
@@ -149,7 +150,7 @@ def discover_videos(input_dir: Path) -> list[OrderedVideo]:
 
     videos: list[OrderedVideo] = []
     for path in sorted(input_dir.iterdir()):
-        if not path.is_file() or path.suffix.lower() != ".mp4":
+        if not path.is_file() or path.suffix.lower() not in SUPPORTED_INPUT_EXTENSIONS:
             continue
         creation_time = ffprobe_creation_time(path)
         if creation_time is not None:
@@ -163,7 +164,7 @@ def discover_videos(input_dir: Path) -> list[OrderedVideo]:
             path=path, order_time=fallback, order_source="mtime"))
 
     if not videos:
-        raise SystemExit(f"No MP4 files found in {input_dir}")
+        raise SystemExit(f"No MP4 or WAV files found in {input_dir}")
 
     return sorted(videos, key=lambda item: (item.order_time, item.path.name.lower()))
 
@@ -202,6 +203,20 @@ def concat_videos(videos: list[OrderedVideo], work_dir: Path) -> Path:
         ]
     )
     return merged_video
+
+
+def concat_media(media: list[OrderedVideo], work_dir: Path) -> Path:
+    """Concatenate video inputs, or audio-only WAV inputs."""
+    if all(item.path.suffix.lower() == ".wav" for item in media):
+        concat_file = work_dir / "concat.txt"
+        merged_audio = work_dir / "merged.wav"
+        write_concat_file(media, concat_file)
+        run_command([
+            "ffmpeg", "-y", "-f", "concat", "-safe", "0",
+            "-i", str(concat_file), "-c:a", "pcm_s16le", str(merged_audio),
+        ])
+        return merged_audio
+    return concat_videos(media, work_dir)
 
 
 def extract_audio(video_path: Path, work_dir: Path) -> Path:
@@ -434,8 +449,12 @@ def main() -> int:
         if not audio_path.exists():
             raise SystemExit(f"Audio file not found: {audio_path}")
     else:
-        merged_video = concat_videos(ordered_videos, run_work_dir)
-        audio_path = extract_audio(merged_video, run_work_dir)
+        merged_video = concat_media(ordered_videos, run_work_dir)
+        audio_path = (
+            merged_video
+            if merged_video.suffix.lower() == ".wav"
+            else extract_audio(merged_video, run_work_dir)
+        )
     result = transcribe_and_diarize(audio_path, args=args)
     transcript_text = render_transcript(result, ordered_videos)
     transcript_path, json_path = write_outputs(
